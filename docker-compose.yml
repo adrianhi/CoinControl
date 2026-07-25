@@ -9,6 +9,9 @@ services:
       - /app/node_modules
     environment:
       - VITE_API_URL=http://localhost:3000
+      # Docker Desktop en Windows puede no propagar eventos de archivos al contenedor.
+      - CHOKIDAR_USEPOLLING=true
+      - CHOKIDAR_INTERVAL=500
     depends_on:
       - backend
 
@@ -20,9 +23,12 @@ services:
     volumes:
       - ./Backend:/app
       - /app/node_modules
+    # Sincroniza dependencias nuevas aunque el volumen node_modules ya existiera.
+    command: sh -c "npm install && npm run dev"
     environment:
       - PORT=3000
       - DATABASE_URL=postgresql://coincontrol:coincontrol@database:5432/coincontrol
+      - JWT_SECRET=change-this-development-secret
     depends_on:
       database:
         condition: service_healthy
@@ -37,6 +43,7 @@ services:
       - POSTGRES_PASSWORD=coincontrol
     volumes:
       - postgres_data:/var/lib/postgresql/data
+      - ./Backend/database/init:/docker-entrypoint-initdb.d:ro
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U coincontrol -d coincontrol"]
       interval: 5s
