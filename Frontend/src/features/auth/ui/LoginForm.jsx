@@ -26,7 +26,7 @@ export function LoginForm({ onSuccess }) {
       setIsSubmitting(true);
       await login({ email, password });
       setNotification({ type: 'success', message: 'Inicio de sesión exitoso. Redirigiendo…' });
-      window.setTimeout(onSuccess, 900);
+      if (onSuccess) window.setTimeout(onSuccess, 900);
     } catch (error) {
       setNotification({ type: 'error', message: error.message || 'Credenciales inválidas.' });
     } finally {
