@@ -1,0 +1,47 @@
+services:
+  frontend:
+    build:
+      context: ./Frontend
+    ports:
+      - "5173:5173"
+    volumes:
+      - ./Frontend:/app
+      - /app/node_modules
+    environment:
+      - VITE_API_URL=http://localhost:3000
+    depends_on:
+      - backend
+
+  backend:
+    build:
+      context: ./Backend
+    ports:
+      - "3000:3000"
+    volumes:
+      - ./Backend:/app
+      - /app/node_modules
+    environment:
+      - PORT=3000
+      - DATABASE_URL=postgresql://coincontrol:coincontrol@database:5432/coincontrol
+    depends_on:
+      database:
+        condition: service_healthy
+
+  database:
+    image: postgres:16-alpine
+    ports:
+      - "5432:5432"
+    environment:
+      - POSTGRES_DB=coincontrol
+      - POSTGRES_USER=coincontrol
+      - POSTGRES_PASSWORD=coincontrol
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U coincontrol -d coincontrol"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+volumes:
+  postgres_data:
