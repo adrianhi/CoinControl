@@ -3,31 +3,42 @@ import cors from 'cors';
 import express from 'express';
 import { LoginUserUseCase } from '../../application/use-cases/LoginUserUseCase.js';
 import { GetDashboardSummaryUseCase } from '../../application/use-cases/GetDashboardSummaryUseCase.js';
+import { CreateTransactionUseCase } from '../../application/use-cases/CreateTransactionUseCase.js';
+import { GetUserTransactionsUseCase } from '../../application/use-cases/GetUserTransactionsUseCase.js';
 import { createPostgresPool } from '../../infrastructure/database/postgres.js';
 import { runAuthMigrations } from '../../infrastructure/database/runAuthMigrations.js';
 import { PgUserRepository } from '../../infrastructure/repositories/PgUserRepository.js';
+import { PgTransactionRepository } from '../../infrastructure/repositories/PgTransactionRepository.js';
 import { AuthController } from './controllers/AuthController.js';
 import { DashboardController } from './controllers/DashboardController.js';
+import { TransactionController } from './controllers/TransactionController.js';
 import { authenticateJwt } from './middlewares/authenticateJwt.js';
 import { createAuthRouter } from './routes/authRoutes.js';
 import { createDashboardRouter } from './routes/dashboardRoutes.js';
+import { createTransactionRouter } from './routes/transactionRoutes.js';
 
 const app = express();
 const port = process.env.PORT || 3000;
 const jwtSecret = process.env.JWT_SECRET || 'development-only-secret';
 const pool = createPostgresPool(process.env.DATABASE_URL);
 const userRepository = new PgUserRepository(pool);
+const transactionRepository = new PgTransactionRepository(pool);
 const loginUserUseCase = new LoginUserUseCase({
   userRepository,
   jwtSecret
 });
 const authController = new AuthController(loginUserUseCase);
 const dashboardController = new DashboardController(new GetDashboardSummaryUseCase());
+const transactionController = new TransactionController({
+  createTransactionUseCase: new CreateTransactionUseCase(transactionRepository),
+  getUserTransactionsUseCase: new GetUserTransactionsUseCase(transactionRepository)
+});
 
 app.use(cors());
 app.use(express.json());
 app.use('/api/auth', createAuthRouter(authController));
 app.use('/api/dashboard', createDashboardRouter({ dashboardController, authenticate: authenticateJwt(jwtSecret) }));
+app.use('/api/transactions', createTransactionRouter({ transactionController, authenticate: authenticateJwt(jwtSecret) }));
 
 app.get('/health', (_request, response) => {
   response.status(200).json({ status: 'ok', service: 'coincontrol-backend' });
